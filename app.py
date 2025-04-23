@@ -5,9 +5,25 @@ import openai
 from dotenv import load_dotenv
 import json
 
+# Load FAQ data from a JSON file
+# Load FAQ data from a JSON file with UTF-8 encoding
+
 
 with open('faq.json', 'r', encoding='utf-8') as file:
     faq_data = json.load(file)
+
+# # Create the custom prompt
+# custom_prompt = f"""
+# You are an AI assistant for an ice sculpture company named "Ice Butcher".
+# This is the information and question answers you need to assist users based on this data:
+# if user mentions order then show the order link otherwise dont show the order link. only show the required links, if all links are asked then skip the order link, only show order when asked explicitly.
+# {json.dumps(faq_data, indent=2)}
+
+
+
+# """
+
+
 
 
 app = Flask(__name__)
@@ -26,9 +42,15 @@ def encode_image(image_path):
     with open(image_path, "rb") as image_file:
         return base64.b64encode(image_file.read()).decode("utf-8")
 
+
+# Global conversation history with a welcome message
+conversation_history = [{"user": "", "ai": "Welcome to Ice Butcher! How can I assist you today?  If you have any questions about ice sculptures or our services, feel free to ask.🧊"}]
+
+
 @app.route("/", methods=["GET"])
 def index():
-    return render_template("index.html")
+    # Render the template and pass the initial conversation history
+    return render_template("index.html", conversation_history=conversation_history)
 
 # Load Images data
 import json
@@ -64,6 +86,9 @@ def find_top_matches(user_input, data):
 conversation_history = []
 @app.route("/chatbot", methods=["POST"])
 def chatbot():
+    
+
+
     user_input = request.form.get("user_input", "").strip().lower()
     uploaded_file = request.files.get("image")
 
@@ -86,8 +111,6 @@ def chatbot():
         Standard Sculptures (images urls of the sculptures, use these when user asks for a sculpture image), [only utilize these urls and do create your own]:
         {json.dumps(sorted_matches, indent=2, ensure_ascii=False)}
 
-        Message to show along with the images response:
-        this is the Rendering of what we have done for other clients, we can also customize it to your event theme and logo, So! you want like this? (change your tone accordingly)
 
         """
         conversation_text = "\n".join([f"User: {entry['user']}\nAI: {entry['ai']}" for entry in conversation_history])
@@ -120,9 +143,9 @@ def chatbot():
             if "https://theicebutcher.com/request/" in gpt_response:
                 return jsonify({"image_url": "img.PNG"}) 
 
-            # if "https://theicebutcher.com/request/" in gpt_response:
-            #     return jsonify({"image_url": "img.PNG"}) 
 
+
+        # If the user input contains "generate", pass the prompt to DALL·E
 
         
         # Handle other chatbot input
@@ -136,6 +159,7 @@ def chatbot():
             conversation_history.append({"user": user_input, "ai": gpt_response})
             return jsonify({"response": gpt_response})
         
+
 
     except Exception as e:
         return jsonify({"response": f"Error: {str(e)}"})
